@@ -1,0 +1,13 @@
+{
+  "name": "@kirkpatrick/vekole-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "VEKOLE rules for memory, fatigue, and grading. No network. No student records.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test src/engine.test.ts"
+  }
+}
