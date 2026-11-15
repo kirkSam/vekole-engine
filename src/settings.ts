@@ -15,6 +15,10 @@ export const VEKOLE_SETTINGS = {
   fatigueMissStreak: 3,
   fatigueClearAnswers: 3,
   answerLimit: 500,
+  sightWordsSeconds: 20,
+  phonemicAwarenessSeconds: 20,
+  alphabetSeconds: 6,
+  sightWordsListRule: 0.7,
 } as const;
 
 export type VekoleSettings = typeof VEKOLE_SETTINGS;

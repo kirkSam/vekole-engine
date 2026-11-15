@@ -13,6 +13,11 @@ export function daysSince(lastPracticedAt: string, now: Date): number {
   return (now.getTime() - Date.parse(lastPracticedAt)) / DAY_MS;
 }
 
+/** t = S x ln(1.25). At this age, R has fallen to 0.80. */
+export function dueInDays(strengthDays: number, settings: VekoleSettings = VEKOLE_SETTINGS): number {
+  return strengthDays * Math.log(1 / settings.dueThreshold);
+}
+
 /** R = e^(-t/S). */
 export function retention(strengthDays: number, days: number): number {
   if (strengthDays <= 0) return 0;
@@ -63,8 +68,9 @@ export function applyReview(
 ): MemoryRecord {
   if (!correct) return miss(record, now, settings);
   const remembered = retention(record.strengthDays, daysSince(record.lastPracticedAt, now));
-  const factor =
-    settings.reviewMultiplier + settings.spacingBonus * Math.max(0, settings.dueThreshold - remembered);
+  const below = settings.dueThreshold - remembered;
+  const late = below > 1e-4 ? below : 0;
+  const factor = settings.reviewMultiplier + settings.spacingBonus * late;
   return {
     strengthDays: record.strengthDays * factor,
     lastPracticedAt: now.toISOString(),

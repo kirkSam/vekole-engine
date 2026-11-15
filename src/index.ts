@@ -1,10 +1,14 @@
+export { AGREED_VERSION } from "./agreed-version.ts";
 export { VEKOLE_SETTINGS, type VekoleSettings } from "./settings.ts";
+export { runParity, type ParityResult } from "./parity.ts";
+export { dueForReviewToday, reviewedToday } from "./sentences.ts";
 export {
   allowsEarlyStepDown,
   applyRecheck,
   applyReview,
   createMemory,
   daysSince,
+  dueInDays,
   isDue,
   retention,
   type MemoryRecord,
