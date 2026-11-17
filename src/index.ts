@@ -24,3 +24,4 @@ export {
   settleUnreadReply,
   writeGradeInstruction,
 } from "./grading.ts";
+export { removePersonalDetails } from "./personal.ts";

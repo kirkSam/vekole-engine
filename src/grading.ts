@@ -1,4 +1,5 @@
 import { VEKOLE_SETTINGS } from "./settings.ts";
+import { removePersonalDetails } from "./personal.ts";
 
 const ONES = [
   "zero",
@@ -96,7 +97,7 @@ export function writeGradeInstruction(input: { question: string; answer: string 
   instruction: string;
   studentAnswer: string;
 } {
-  const studentAnswer = Array.from(input.answer).slice(0, VEKOLE_SETTINGS.answerLimit).join("");
+  const studentAnswer = Array.from(removePersonalDetails(input.answer)).slice(0, VEKOLE_SETTINGS.answerLimit).join("");
   const instruction = [GRADE_INSTRUCTION, ANSWER_IS_DATA, "Grade only the studentAnswer field.", `Question: ${input.question}`].join("\n");
   return { instruction, studentAnswer };
 }
