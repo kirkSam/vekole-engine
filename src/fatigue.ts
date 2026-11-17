@@ -15,7 +15,8 @@ export function freshFatigue(): FatigueState {
  * Fatigue uses this session's answer times only.
  * It cannot turn on before 5 answers.
  * A normal-pace answer is one that is not slower than 1.8 times the previous average.
- * A miss at a normal pace counts toward clearing High.
+ * Only a correct answer at that pace counts toward clearing High.
+ * A miss resets that count to zero.
  */
 export function noteAnswer(
   state: FatigueState,
@@ -30,7 +31,7 @@ export function noteAnswer(
   const missStreak = miss ? state.missStreak + 1 : 0;
   let high = state.high;
   if (answered >= settings.fatigueMinAnswers && (slow || missStreak >= settings.fatigueMissStreak)) high = true;
-  const normal = !slow;
+  const normal = !slow && !miss;
   let normalStreak = 0;
   if (high && normal) normalStreak = state.normalStreak + 1;
   if (high && normalStreak >= settings.fatigueClearAnswers) {
