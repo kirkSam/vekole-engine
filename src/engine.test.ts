@@ -112,6 +112,22 @@ describe("fatigue and mixing", () => {
     assert.equal(recheckDue(VEKOLE_SETTINGS.recheckAfterMs, 8, true), false);
   });
 
+  it("stays high through misses at a normal pace, then clears on three correct answers", () => {
+    let state = freshFatigue();
+    for (let n = 0; n < 4; n += 1) state = noteAnswer(state, 1000, false);
+    state = noteAnswer(state, 3000, false);
+    assert.equal(state.high, true);
+    state = noteAnswer(state, 1000, true);
+    state = noteAnswer(state, 1000, true);
+    state = noteAnswer(state, 1000, true);
+    assert.equal(state.high, true);
+    state = noteAnswer(state, 1000, false);
+    state = noteAnswer(state, 1000, false);
+    assert.equal(state.high, true);
+    state = noteAnswer(state, 1000, false);
+    assert.equal(state.high, false);
+  });
+
   it("never steps Sight Words or Alphabet down early", () => {
     assert.equal(allowsEarlyStepDown("sw", true), false);
     assert.equal(allowsEarlyStepDown("sp", true), false);

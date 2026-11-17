@@ -124,6 +124,16 @@ export function runParity(now = new Date("2026-11-15T19:00:00.000Z")): ParityRes
   check("two normal answers do not clear fatigue", clearing.high === true, "still high");
   clearing = noteAnswer(clearing, 1000, false);
   check("three normal answers clear fatigue", clearing.high === false, "clear");
+  let missesWhileHigh = slow;
+  missesWhileHigh = noteAnswer(missesWhileHigh, 1000, true);
+  missesWhileHigh = noteAnswer(missesWhileHigh, 1000, true);
+  missesWhileHigh = noteAnswer(missesWhileHigh, 1000, true);
+  check("misses at a normal pace do not clear fatigue", missesWhileHigh.high === true, "still high");
+  let clearedByCorrect = missesWhileHigh;
+  clearedByCorrect = noteAnswer(clearedByCorrect, 1000, false);
+  clearedByCorrect = noteAnswer(clearedByCorrect, 1000, false);
+  clearedByCorrect = noteAnswer(clearedByCorrect, 1000, false);
+  check("three correct answers at a normal pace clear fatigue", clearedByCorrect.high === false, "clear");
 
   check("Sight Words never steps to an easier list", allowsEarlyStepDown("sw", true) === false, "no");
   check("Alphabet keeps its own step-back", allowsEarlyStepDown("sp", true) === false, "no");
@@ -133,7 +143,7 @@ export function runParity(now = new Date("2026-11-15T19:00:00.000Z")): ParityRes
   check("due line is hidden at zero", dueForReviewToday(0) === null, "hidden");
   check("due line names the count", dueForReviewToday(2) === "Due for review today: 2", dueForReviewToday(2) ?? "");
   check("session report sentence", reviewedToday(4, 3) === "Reviewed today: 4. Remembered: 3.", reviewedToday(4, 3));
-  check("agreed tag", AGREED_VERSION === "v0.1.0", AGREED_VERSION);
+  check("agreed tag", AGREED_VERSION === "v0.1.1", AGREED_VERSION);
 
   return results;
 }

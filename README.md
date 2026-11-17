@@ -2,10 +2,10 @@
 
 Shared VEKOLE rules. Memory, fatigue, and grading. No network and no student records.
 
-The app and the website do not install this yet. Both sides install the same git tag when Sam says to connect it. Neither side points at a branch. The tag is `v0.1.0`, also written in `src/agreed-version.ts`.
+The app and the website do not install this yet. Both sides install the same git tag when Sam says to connect it. Neither side points at a branch. The tag is `v0.1.1`, also written in `src/agreed-version.ts`.
 
 ```json
-"@kirkpatrick/vekole-engine": "github:kirkSam/vekole-engine#v0.1.0"
+"@kirkpatrick/vekole-engine": "github:kirkSam/vekole-engine#v0.1.1"
 ```
 
 Read-only access is for the website's Vercel project and for the app's builds (the Grok platform and Sam's Mac). The package does not call Grok. Each side makes that call with the instruction this package writes.
