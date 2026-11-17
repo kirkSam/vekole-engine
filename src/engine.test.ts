@@ -180,6 +180,7 @@ describe("grading", () => {
     assert.equal(removePersonalDetails("call 510-555-1234"), "call [removed]");
     assert.equal(removePersonalDetails("(510) 555-1234"), "[removed]");
     assert.equal(removePersonalDetails("I live at 123 Main Street"), "I live at [removed]");
+    assert.equal(removePersonalDetails("12 Oak Ave"), "[removed]");
     assert.equal(removePersonalDetails("510.555.1234"), "[removed]");
     assert.equal(removePersonalDetails("510 555 1234"), "[removed]");
     assert.equal(removePersonalDetails("+1 510 555 1234"), "[removed]");
@@ -193,6 +194,11 @@ describe("grading", () => {
     assert.equal(removePersonalDetails("555"), "555");
     assert.equal(removePersonalDetails("The answer is 12 because 6 + 6 = 12."), "The answer is 12 because 6 + 6 = 12.");
     assert.equal(removePersonalDetails("Main Street is a road in my book."), "Main Street is a road in my book.");
+    assert.equal(removePersonalDetails("He drove 60 miles down the road."), "He drove 60 miles down the road.");
+    assert.equal(removePersonalDetails("The answer is 3 because we place the decimal."), "The answer is 3 because we place the decimal.");
+    assert.equal(removePersonalDetails("Add 10 the same way."), "Add 10 the same way.");
+    assert.equal(removePersonalDetails("I counted 5 cars on the street."), "I counted 5 cars on the street.");
+    assert.equal(removePersonalDetails("456-1234 = -778"), "456-1234 = -778");
   });
 
   it("does not call the network or keep a student record", () => {
