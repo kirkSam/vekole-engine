@@ -1,15 +1,20 @@
 import { isDue, retention, type MemoryRecord } from "./memory.ts";
 import { VEKOLE_SETTINGS, type VekoleSettings } from "./settings.ts";
 
+/**
+ * One spiral or review in any run of `reviewEvery` items.
+ * `itemsSinceMixed` counts items served since the last spiral or review.
+ * A whole-sitting ratio is not used. That ratio can open two slots in a row.
+ */
 export function reviewSlotOpen(
-  itemsServed: number,
+  itemsSinceMixed: number,
   reviewsServed: number,
   fatigueHigh: boolean,
   settings: VekoleSettings = VEKOLE_SETTINGS,
 ): boolean {
   if (fatigueHigh) return false;
   if (reviewsServed >= settings.reviewMaxPerSession) return false;
-  return (reviewsServed + 1) / (itemsServed + 1) <= 1 / settings.reviewEvery;
+  return itemsSinceMixed >= settings.reviewEvery - 1;
 }
 
 export function recheckDue(

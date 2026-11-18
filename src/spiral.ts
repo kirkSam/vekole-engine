@@ -47,7 +47,8 @@ function dueSpiral(spirals: readonly SpiralWord[], settings: VekoleSettings): Sp
  * High fatigue, or a closed slot, serves a new word instead.
  */
 export function chooseSightServe(input: {
-  itemsServed: number;
+  /** Items served since the last spiral or review. The package owns how many open the slot. */
+  itemsSinceMixed: number;
   reviewsServed: number;
   fatigueHigh: boolean;
   spirals: readonly SpiralWord[];
@@ -56,7 +57,7 @@ export function chooseSightServe(input: {
   settings?: VekoleSettings;
 }): { kind: SightServeKind; itemKey: string } {
   const settings = input.settings ?? VEKOLE_SETTINGS;
-  if (!reviewSlotOpen(input.itemsServed, input.reviewsServed, input.fatigueHigh, settings)) {
+  if (!reviewSlotOpen(input.itemsSinceMixed, input.reviewsServed, input.fatigueHigh, settings)) {
     return { kind: "new", itemKey: "" };
   }
   const spiral = dueSpiral(input.spirals, settings);
@@ -95,6 +96,7 @@ function restWord(spirals: readonly SpiralWord[], itemKey: string, returns: numb
 export function settleSightWord(input: {
   itemsServed: number;
   reviewsServed: number;
+  itemsSinceMixed: number;
   spirals: readonly SpiralWord[];
   itemKey: string;
   kind: SightServeKind;
@@ -106,6 +108,7 @@ export function settleSightWord(input: {
 }): {
   itemsServed: number;
   reviewsServed: number;
+  itemsSinceMixed: number;
   spirals: SpiralWord[];
   record: MemoryRecord;
   known: boolean;
@@ -143,6 +146,7 @@ export function settleSightWord(input: {
   return {
     itemsServed: input.itemsServed + 1,
     reviewsServed: input.reviewsServed + (input.kind === "new" ? 0 : 1),
+    itemsSinceMixed: input.kind === "new" ? input.itemsSinceMixed + 1 : 0,
     spirals,
     record,
     known: input.correct ? true : input.known,

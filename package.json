@@ -1,6 +1,6 @@
 {
   "name": "@kirkpatrick/vekole-engine",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "VEKOLE rules for memory, fatigue, and grading. No network. No student records.",

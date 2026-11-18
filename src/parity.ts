@@ -93,7 +93,11 @@ export function runParity(now = new Date("2026-11-15T19:00:00.000Z")): ParityRes
   );
 
   check("no review in the first three items", reviewSlotOpen(0, 0, false) === false && reviewSlotOpen(2, 0, false) === false, "closed");
-  check("one review in every four items", reviewSlotOpen(3, 0, false) === true && reviewSlotOpen(4, 1, false) === false, "opens on the fourth");
+  check(
+    "one review in every four items",
+    reviewSlotOpen(VEKOLE_SETTINGS.reviewEvery - 1, 0, false) === true && reviewSlotOpen(0, 1, false) === false,
+    "opens after the gap, then closes",
+  );
   check("ten reviews is the session cap", reviewSlotOpen(100, 10, false) === false, "closed");
   check("fatigue blocks a review slot", reviewSlotOpen(3, 0, true) === false, "closed");
 
@@ -171,7 +175,7 @@ export function runParity(now = new Date("2026-11-15T19:00:00.000Z")): ParityRes
   check("due line is hidden at zero", dueForReviewToday(0) === null, "hidden");
   check("due line names the count", dueForReviewToday(2) === "Due for review today: 2", dueForReviewToday(2) ?? "");
   check("session report sentence", reviewedToday(4, 3) === "Reviewed today: 4. Remembered: 3.", reviewedToday(4, 3));
-  check("agreed tag", AGREED_VERSION === "v0.2.0", AGREED_VERSION);
+  check("agreed tag", AGREED_VERSION === "v0.2.1", AGREED_VERSION);
 
   return results;
 }
@@ -188,13 +192,14 @@ function replayMissedThe(now: Date): {
   const planned = ["a", "b", "c", "d", "the", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q"];
   let itemsServed = 0;
   let reviewsServed = 0;
+  let itemsSinceMixed = 0;
   let spirals: SpiralWord[] = freshSpirals();
   const rows = new Map<string, { strengthDays: number; lastPracticedAt: string; reviews: number; misses: number; known: boolean }>();
   const served: string[] = [];
   let plan = 0;
   for (let step = 0; step < 30 && plan <= planned.length; step += 1) {
     const records = [...rows.entries()].map(([itemKey, row]) => ({ itemKey, ...row }));
-    const choice = chooseSightServe({ itemsServed, reviewsServed, fatigueHigh: false, spirals, records, now });
+    const choice = chooseSightServe({ itemsSinceMixed, reviewsServed, fatigueHigh: false, spirals, records, now });
     let key = choice.itemKey;
     let correct = choice.kind === "spiral" ? false : true;
     if (choice.kind === "new") {
@@ -208,6 +213,7 @@ function replayMissedThe(now: Date): {
     const settled = settleSightWord({
       itemsServed,
       reviewsServed,
+      itemsSinceMixed,
       spirals,
       itemKey: key,
       kind: choice.kind,
@@ -218,6 +224,7 @@ function replayMissedThe(now: Date): {
     });
     itemsServed = settled.itemsServed;
     reviewsServed = settled.reviewsServed;
+    itemsSinceMixed = settled.itemsSinceMixed;
     spirals = settled.spirals;
     rows.set(key, { ...settled.record, known: settled.known });
     served.push(`${choice.kind}:${key}`);
@@ -230,6 +237,7 @@ function replayMissedThe(now: Date): {
 
   let probeServed = 0;
   let probeReviews = 0;
+  let probeSince = 0;
   let probeSpirals: SpiralWord[] = freshSpirals();
   const probeRows = new Map<string, { strengthDays: number; lastPracticedAt: string; reviews: number; misses: number; known: boolean }>();
   const probePlan = ["a", "b", "c", "d", "the", "e", "f", "g"];
@@ -242,7 +250,7 @@ function replayMissedThe(now: Date): {
     const records = [...probeRows.entries()].map(([itemKey, row]) => ({ itemKey, ...row }));
     const high = step === 8;
     const choice = chooseSightServe({
-      itemsServed: probeServed,
+      itemsSinceMixed: probeSince,
       reviewsServed: probeReviews,
       fatigueHigh: high,
       spirals: probeSpirals,
@@ -252,7 +260,7 @@ function replayMissedThe(now: Date): {
     if (high) {
       blocked = choice.kind !== "spiral";
       const again = chooseSightServe({
-        itemsServed: probeServed,
+        itemsSinceMixed: probeSince,
         reviewsServed: probeReviews,
         fatigueHigh: false,
         spirals: probeSpirals,
@@ -265,6 +273,7 @@ function replayMissedThe(now: Date): {
         const settled = settleSightWord({
           itemsServed: probeServed,
           reviewsServed: probeReviews,
+          itemsSinceMixed: probeSince,
           spirals: probeSpirals,
           itemKey: again.itemKey,
           kind: "spiral",
@@ -294,6 +303,7 @@ function replayMissedThe(now: Date): {
     const settled = settleSightWord({
       itemsServed: probeServed,
       reviewsServed: probeReviews,
+      itemsSinceMixed: probeSince,
       spirals: probeSpirals,
       itemKey: key,
       kind: choice.kind,
@@ -304,6 +314,7 @@ function replayMissedThe(now: Date): {
     });
     probeServed = settled.itemsServed;
     probeReviews = settled.reviewsServed;
+    probeSince = settled.itemsSinceMixed;
     probeSpirals = settled.spirals;
     probeRows.set(key, { ...settled.record, known: settled.known });
     if (choice.kind === "spiral") {
