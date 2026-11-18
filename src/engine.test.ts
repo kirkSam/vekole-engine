@@ -85,6 +85,18 @@ describe("fatigue and mixing", () => {
     assert.equal(state.high, true);
   });
 
+  it("leaves a long miss out of the pace average", () => {
+    let state = freshFatigue();
+    for (let n = 0; n < 4; n += 1) state = noteAnswer(state, 1000, false);
+    state = noteAnswer(state, 20000, true);
+    assert.equal(state.high, false);
+    assert.equal(state.timesMs.length, 4);
+    assert.equal(state.answers, 5);
+    state = noteAnswer(state, 1000, false);
+    assert.equal(state.high, false);
+    assert.deepEqual(state.timesMs, [1000, 1000, 1000, 1000, 1000]);
+  });
+
   it("clears only after 3 normal answers and blocks reviews while high", () => {
     let state = freshFatigue();
     for (let n = 0; n < 4; n += 1) state = noteAnswer(state, 1000, false);

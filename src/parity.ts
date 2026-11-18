@@ -119,6 +119,14 @@ export function runParity(now = new Date("2026-11-15T19:00:00.000Z")): ParityRes
   check("fatigue stays clear before 5 answers", fatigue.high === false, `${fatigue.timesMs.length} answers`);
   const slow = noteAnswer(fatigue, 1000 * VEKOLE_SETTINGS.fatiguePace + 1, false);
   check("a slow fifth answer turns fatigue high", slow.high === true, "high");
+  let longMiss = freshFatigue();
+  for (let n = 0; n < 4; n += 1) longMiss = noteAnswer(longMiss, 1000, false);
+  longMiss = noteAnswer(longMiss, 20000, true);
+  check(
+    "a long miss is not a pace sample",
+    longMiss.high === false && longMiss.timesMs.length === 4 && longMiss.timesMs.every((time) => time === 1000),
+    `${longMiss.timesMs.length}`,
+  );
   let misses = freshFatigue();
   for (let n = 0; n < 2; n += 1) misses = noteAnswer(misses, 1000, false);
   for (let n = 0; n < 3; n += 1) misses = noteAnswer(misses, 1000, true);
@@ -175,7 +183,7 @@ export function runParity(now = new Date("2026-11-15T19:00:00.000Z")): ParityRes
   check("due line is hidden at zero", dueForReviewToday(0) === null, "hidden");
   check("due line names the count", dueForReviewToday(2) === "Due for review today: 2", dueForReviewToday(2) ?? "");
   check("session report sentence", reviewedToday(4, 3) === "Reviewed today: 4. Remembered: 3.", reviewedToday(4, 3));
-  check("agreed tag", AGREED_VERSION === "v0.2.1", AGREED_VERSION);
+  check("agreed tag", AGREED_VERSION === "v0.2.2", AGREED_VERSION);
 
   return results;
 }
