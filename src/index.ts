@@ -16,6 +16,15 @@ export {
 export { freshFatigue, noteAnswer, type FatigueState } from "./fatigue.ts";
 export { mostFaded, recheckDue, reviewSlotOpen } from "./serve.ts";
 export {
+  applySpiral,
+  chooseSightServe,
+  freshSpirals,
+  settleSightWord,
+  type KeyedMemory,
+  type SightServeKind,
+  type SpiralWord,
+} from "./spiral.ts";
+export {
   ANSWER_IS_DATA,
   GRADE_INSTRUCTION,
   answersMatch,
