@@ -6,6 +6,7 @@ import { AGREED_VERSION } from "./agreed-version.ts";
 import { noteAnswer, freshFatigue } from "./fatigue.ts";
 import { applyRecheck, applyReview, allowsEarlyStepDown, createMemory, dueInDays, isDue } from "./memory.ts";
 import { mostFaded, recheckDue, reviewSlotOpen } from "./serve.ts";
+import { chooseSightServe, freshSpirals, settleSightWord, type SpiralWord } from "./spiral.ts";
 import { dueForReviewToday, reviewedToday } from "./sentences.ts";
 import { VEKOLE_SETTINGS } from "./settings.ts";
 
@@ -139,11 +140,186 @@ export function runParity(now = new Date("2026-11-15T19:00:00.000Z")): ParityRes
   check("Alphabet keeps its own step-back", allowsEarlyStepDown("sp", true) === false, "no");
   check("windows stay 20, 20, and 6 seconds", VEKOLE_SETTINGS.sightWordsSeconds === 20 && VEKOLE_SETTINGS.phonemicAwarenessSeconds === 20 && VEKOLE_SETTINGS.alphabetSeconds === 6, "20, 20, 6");
   check("Sight Words list rule stays 70%", VEKOLE_SETTINGS.sightWordsListRule === 0.7, String(VEKOLE_SETTINGS.sightWordsListRule));
+  check(
+    "spiral settings stay 3 new words and 2 returns",
+    VEKOLE_SETTINGS.spiralGapItems === 3 && VEKOLE_SETTINGS.spiralMaxReturns === 2,
+    `${VEKOLE_SETTINGS.spiralGapItems}, ${VEKOLE_SETTINGS.spiralMaxReturns}`,
+  );
+  const spiral = replayMissedThe(now);
+  check(
+    "a miss at item 5 returns after 3 new words",
+    spiral.served[4] === "new:the" && spiral.served[8] === "spiral:the",
+    spiral.served.slice(0, 9).join(" "),
+  );
+  check(
+    "a second miss returns at item 13 and then rests",
+    spiral.served[12] === "spiral:the" && spiral.served.slice(13).every((item) => item !== "spiral:the" && item !== "review:the"),
+    spiral.served.slice(8).join(" "),
+  );
+  check(
+    "spirals and reviews stay at most one in four",
+    spiral.windowsOk,
+    "window",
+  );
+  check("high fatigue serves no spiral", spiral.fatigueBlocks, "paused");
+  check(
+    "a correct spiral counts as known and holds the level",
+    spiral.correctKnown && spiral.correctHolds && spiral.correctCrossesList,
+    "known",
+  );
   check("the first review is not due before its time", isDue(first, addDays(now, dueInDays(4.5) - 0.01)) === false, "not yet");
   check("due line is hidden at zero", dueForReviewToday(0) === null, "hidden");
   check("due line names the count", dueForReviewToday(2) === "Due for review today: 2", dueForReviewToday(2) ?? "");
   check("session report sentence", reviewedToday(4, 3) === "Reviewed today: 4. Remembered: 3.", reviewedToday(4, 3));
-  check("agreed tag", AGREED_VERSION === "v0.1.3", AGREED_VERSION);
+  check("agreed tag", AGREED_VERSION === "v0.2.0", AGREED_VERSION);
 
   return results;
+}
+
+/** Miss "the" at item 5. The package, not the caller, chooses when it returns. */
+function replayMissedThe(now: Date): {
+  served: string[];
+  windowsOk: boolean;
+  fatigueBlocks: boolean;
+  correctKnown: boolean;
+  correctHolds: boolean;
+  correctCrossesList: boolean;
+} {
+  const planned = ["a", "b", "c", "d", "the", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q"];
+  let itemsServed = 0;
+  let reviewsServed = 0;
+  let spirals: SpiralWord[] = freshSpirals();
+  const rows = new Map<string, { strengthDays: number; lastPracticedAt: string; reviews: number; misses: number; known: boolean }>();
+  const served: string[] = [];
+  let plan = 0;
+  for (let step = 0; step < 30 && plan <= planned.length; step += 1) {
+    const records = [...rows.entries()].map(([itemKey, row]) => ({ itemKey, ...row }));
+    const choice = chooseSightServe({ itemsServed, reviewsServed, fatigueHigh: false, spirals, records, now });
+    let key = choice.itemKey;
+    let correct = choice.kind === "spiral" ? false : true;
+    if (choice.kind === "new") {
+      const next = planned[plan];
+      plan += 1;
+      if (!next) break;
+      key = next;
+      correct = next !== "the";
+    }
+    const prior = rows.get(key);
+    const settled = settleSightWord({
+      itemsServed,
+      reviewsServed,
+      spirals,
+      itemKey: key,
+      kind: choice.kind,
+      correct,
+      record: prior ?? null,
+      known: prior?.known === true,
+      now,
+    });
+    itemsServed = settled.itemsServed;
+    reviewsServed = settled.reviewsServed;
+    spirals = settled.spirals;
+    rows.set(key, { ...settled.record, known: settled.known });
+    served.push(`${choice.kind}:${key}`);
+  }
+  let windowsOk = served.length >= 16;
+  for (let index = 0; index + 4 <= served.length; index += 1) {
+    const mixed = served.slice(index, index + 4).filter((item) => !item.startsWith("new:")).length;
+    if (mixed > 1) windowsOk = false;
+  }
+
+  let probeServed = 0;
+  let probeReviews = 0;
+  let probeSpirals: SpiralWord[] = freshSpirals();
+  const probeRows = new Map<string, { strengthDays: number; lastPracticedAt: string; reviews: number; misses: number; known: boolean }>();
+  const probePlan = ["a", "b", "c", "d", "the", "e", "f", "g"];
+  let probeAt = 0;
+  let correctKnown = false;
+  let correctHolds = false;
+  let blocked = false;
+  let cleared = false;
+  for (let step = 0; step < 12; step += 1) {
+    const records = [...probeRows.entries()].map(([itemKey, row]) => ({ itemKey, ...row }));
+    const high = step === 8;
+    const choice = chooseSightServe({
+      itemsServed: probeServed,
+      reviewsServed: probeReviews,
+      fatigueHigh: high,
+      spirals: probeSpirals,
+      records,
+      now,
+    });
+    if (high) {
+      blocked = choice.kind !== "spiral";
+      const again = chooseSightServe({
+        itemsServed: probeServed,
+        reviewsServed: probeReviews,
+        fatigueHigh: false,
+        spirals: probeSpirals,
+        records,
+        now,
+      });
+      cleared = again.kind === "spiral" && again.itemKey === "the";
+      if (again.kind === "spiral") {
+        const prior = probeRows.get(again.itemKey);
+        const settled = settleSightWord({
+          itemsServed: probeServed,
+          reviewsServed: probeReviews,
+          spirals: probeSpirals,
+          itemKey: again.itemKey,
+          kind: "spiral",
+          correct: true,
+          record: prior ?? null,
+          known: false,
+          now,
+        });
+        correctKnown =
+          settled.known &&
+          settled.record.strengthDays === prior?.strengthDays &&
+          settled.record.lastPracticedAt === prior?.lastPracticedAt;
+        correctHolds = settled.holdLevel;
+      }
+      break;
+    }
+    let key = choice.itemKey;
+    let correct = true;
+    if (choice.kind === "new") {
+      const next = probePlan[probeAt];
+      probeAt += 1;
+      if (!next) break;
+      key = next;
+      correct = next !== "the";
+    }
+    const prior = probeRows.get(key);
+    const settled = settleSightWord({
+      itemsServed: probeServed,
+      reviewsServed: probeReviews,
+      spirals: probeSpirals,
+      itemKey: key,
+      kind: choice.kind,
+      correct,
+      record: prior ?? null,
+      known: prior?.known === true,
+      now,
+    });
+    probeServed = settled.itemsServed;
+    probeReviews = settled.reviewsServed;
+    probeSpirals = settled.spirals;
+    probeRows.set(key, { ...settled.record, known: settled.known });
+    if (choice.kind === "spiral") {
+      correctKnown = settled.known && key === "the";
+      correctHolds = settled.holdLevel;
+    }
+  }
+  const knownBefore = 6;
+  const knownAfter = knownBefore + (correctKnown ? 1 : 0);
+  const rule = VEKOLE_SETTINGS.sightWordsListRule;
+  return {
+    served,
+    windowsOk,
+    fatigueBlocks: blocked && cleared,
+    correctKnown,
+    correctHolds,
+    correctCrossesList: knownBefore / 10 < rule && knownAfter / 10 >= rule,
+  };
 }
