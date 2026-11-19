@@ -85,6 +85,18 @@ describe("fatigue and mixing", () => {
     assert.equal(state.high, true);
   });
 
+  it("leaves a long miss out of the pace average", () => {
+    let state = freshFatigue();
+    for (let n = 0; n < 4; n += 1) state = noteAnswer(state, 1000, false);
+    state = noteAnswer(state, 20000, true);
+    assert.equal(state.high, false);
+    assert.equal(state.timesMs.length, 4);
+    assert.equal(state.answers, 5);
+    state = noteAnswer(state, 1000, false);
+    assert.equal(state.high, false);
+    assert.deepEqual(state.timesMs, [1000, 1000, 1000, 1000, 1000]);
+  });
+
   it("clears only after 3 normal answers and blocks reviews while high", () => {
     let state = freshFatigue();
     for (let n = 0; n < 4; n += 1) state = noteAnswer(state, 1000, false);
@@ -233,13 +245,14 @@ describe("sight-word spiral", () => {
     const planned = ["a", "b", "c", "d", "the", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q"];
     let itemsServed = 0;
     let reviewsServed = 0;
+    let itemsSinceMixed = 0;
     let spirals: SpiralWord[] = freshSpirals();
     const rows = new Map<string, { strengthDays: number; lastPracticedAt: string; reviews: number; misses: number; known: boolean }>();
     const served: { kind: string; key: string; holdLevel: boolean; known: boolean }[] = [];
     let plan = 0;
     for (let step = 0; step < 30; step += 1) {
       const records = [...rows.entries()].map(([itemKey, row]) => ({ itemKey, ...row }));
-      const choice = chooseSightServe({ itemsServed, reviewsServed, fatigueHigh: false, spirals, records, now });
+      const choice = chooseSightServe({ itemsSinceMixed, reviewsServed, fatigueHigh: false, spirals, records, now });
       let key = choice.itemKey;
       let correct = true;
       if (choice.kind === "new") {
@@ -255,6 +268,7 @@ describe("sight-word spiral", () => {
       const settled = settleSightWord({
         itemsServed,
         reviewsServed,
+        itemsSinceMixed,
         spirals,
         itemKey: key,
         kind: choice.kind,
@@ -265,6 +279,7 @@ describe("sight-word spiral", () => {
       });
       itemsServed = settled.itemsServed;
       reviewsServed = settled.reviewsServed;
+      itemsSinceMixed = settled.itemsSinceMixed;
       spirals = settled.spirals;
       rows.set(key, { ...settled.record, known: settled.known });
       served.push({ kind: choice.kind, key, holdLevel: settled.holdLevel, known: settled.known });
@@ -286,6 +301,7 @@ describe("sight-word spiral", () => {
     const again = settleSightWord({
       itemsServed,
       reviewsServed,
+      itemsSinceMixed: 0,
       spirals,
       itemKey: "the",
       kind: "new",
@@ -299,6 +315,7 @@ describe("sight-word spiral", () => {
       after = settleSightWord({
         itemsServed: after.itemsServed,
         reviewsServed: after.reviewsServed,
+        itemsSinceMixed: after.itemsSinceMixed,
         spirals: after.spirals,
         itemKey: key,
         kind: "new",
@@ -310,7 +327,7 @@ describe("sight-word spiral", () => {
     }
     const records = [...rows.entries()].map(([itemKey, row]) => ({ itemKey, ...row }));
     const choice = chooseSightServe({
-      itemsServed: after.itemsServed,
+      itemsSinceMixed: after.itemsSinceMixed,
       reviewsServed: after.reviewsServed,
       fatigueHigh: false,
       spirals: after.spirals,
@@ -347,6 +364,7 @@ describe("sight-word spiral", () => {
     assert.equal(missed.strengthDays, 1);
     let itemsServed = 0;
     let reviewsServed = 0;
+    let itemsSinceMixed = 0;
     let spirals: SpiralWord[] = freshSpirals();
     const rows = new Map<string, { strengthDays: number; lastPracticedAt: string; reviews: number; misses: number; known: boolean }>();
     for (const key of ["a", "b", "c", "d", "the", "e", "f", "g"]) {
@@ -354,6 +372,7 @@ describe("sight-word spiral", () => {
       const settled = settleSightWord({
         itemsServed,
         reviewsServed,
+        itemsSinceMixed,
         spirals,
         itemKey: key,
         kind: "new",
@@ -364,13 +383,14 @@ describe("sight-word spiral", () => {
       });
       itemsServed = settled.itemsServed;
       reviewsServed = settled.reviewsServed;
+      itemsSinceMixed = settled.itemsSinceMixed;
       spirals = settled.spirals;
       rows.set(key, { ...settled.record, known: settled.known });
     }
     const records = [...rows.entries()].map(([itemKey, row]) => ({ itemKey, ...row }));
-    const paused = chooseSightServe({ itemsServed, reviewsServed, fatigueHigh: true, spirals, records, now });
+    const paused = chooseSightServe({ itemsSinceMixed, reviewsServed, fatigueHigh: true, spirals, records, now });
     assert.equal(paused.kind, "new");
-    const ready = chooseSightServe({ itemsServed, reviewsServed, fatigueHigh: false, spirals, records, now });
+    const ready = chooseSightServe({ itemsSinceMixed, reviewsServed, fatigueHigh: false, spirals, records, now });
     assert.equal(ready.kind, "spiral");
     assert.equal(ready.itemKey, "the");
   });
@@ -384,7 +404,7 @@ describe("sight-word spiral", () => {
       misses: 1,
     };
     const choice = chooseSightServe({
-      itemsServed: 3,
+      itemsSinceMixed: VEKOLE_SETTINGS.reviewEvery - 1,
       reviewsServed: 0,
       fatigueHigh: false,
       spirals: [{ itemKey: "the", newWords: VEKOLE_SETTINGS.spiralGapItems, returns: 0, waiting: true }],
@@ -393,5 +413,43 @@ describe("sight-word spiral", () => {
     });
     assert.equal(choice.kind, "spiral");
     assert.equal(choice.itemKey, "the");
+  });
+
+  it("does not serve two due spirals on back-to-back items", () => {
+    const due = [
+      { itemKey: "the", newWords: VEKOLE_SETTINGS.spiralGapItems, returns: 0, waiting: true },
+      { itemKey: "and", newWords: VEKOLE_SETTINGS.spiralGapItems, returns: 0, waiting: true },
+    ];
+    const first = chooseSightServe({
+      itemsSinceMixed: VEKOLE_SETTINGS.reviewEvery - 1,
+      reviewsServed: 0,
+      fatigueHigh: false,
+      spirals: due,
+      records: [],
+      now,
+    });
+    assert.equal(first.kind, "spiral");
+    const settled = settleSightWord({
+      itemsServed: 16,
+      reviewsServed: 0,
+      itemsSinceMixed: VEKOLE_SETTINGS.reviewEvery - 1,
+      spirals: due,
+      itemKey: first.itemKey,
+      kind: "spiral",
+      correct: true,
+      record: createMemory(now),
+      known: false,
+      now,
+    });
+    const second = chooseSightServe({
+      itemsSinceMixed: settled.itemsSinceMixed,
+      reviewsServed: settled.reviewsServed,
+      fatigueHigh: false,
+      spirals: settled.spirals,
+      records: [],
+      now,
+    });
+    assert.equal(second.kind, "new");
+    assert.equal(settled.itemsSinceMixed, 0);
   });
 });

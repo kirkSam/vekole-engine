@@ -5,16 +5,20 @@ export type FatigueState = {
   high: boolean;
   missStreak: number;
   normalStreak: number;
+  /** Every answer this sitting, including misses and timeouts. Older rows omit it. */
+  answers?: number;
 };
 
 export function freshFatigue(): FatigueState {
-  return { timesMs: [], high: false, missStreak: 0, normalStreak: 0 };
+  return { timesMs: [], high: false, missStreak: 0, normalStreak: 0, answers: 0 };
 }
 
 /**
- * Fatigue uses this session's answer times only.
- * It cannot turn on before 5 answers.
- * A normal-pace answer is one that is not slower than 1.8 times the previous average.
+ * Fatigue uses this session's correct answer times only.
+ * A miss or a timeout still counts as an answer, but it is not a pace sample.
+ * Its length cannot turn fatigue high and cannot change the average.
+ * Fatigue cannot turn on before fatigueMinAnswers answers.
+ * A normal-pace answer is a correct answer that is not slower than fatiguePace times the previous average.
  * Only a correct answer at that pace counts toward clearing High.
  * A miss resets that count to zero.
  */
@@ -24,13 +28,13 @@ export function noteAnswer(
   miss: boolean,
   settings: VekoleSettings = VEKOLE_SETTINGS,
 ): FatigueState {
-  const previous = state.timesMs;
-  const average = previous.length === 0 ? ms : previous.reduce((sum, time) => sum + time, 0) / previous.length;
-  const slow = ms > settings.fatiguePace * average;
-  const answered = previous.length + 1;
+  const pace = state.timesMs;
+  const average = pace.length === 0 ? ms : pace.reduce((sum, time) => sum + time, 0) / pace.length;
+  const slow = !miss && pace.length > 0 && ms > settings.fatiguePace * average;
+  const answers = (typeof state.answers === "number" ? state.answers : pace.length) + 1;
   const missStreak = miss ? state.missStreak + 1 : 0;
   let high = state.high;
-  if (answered >= settings.fatigueMinAnswers && (slow || missStreak >= settings.fatigueMissStreak)) high = true;
+  if (answers >= settings.fatigueMinAnswers && (slow || missStreak >= settings.fatigueMissStreak)) high = true;
   const normal = !slow && !miss;
   let normalStreak = 0;
   if (high && normal) normalStreak = state.normalStreak + 1;
@@ -38,5 +42,11 @@ export function noteAnswer(
     high = false;
     normalStreak = 0;
   }
-  return { timesMs: [...previous, ms], high, missStreak, normalStreak };
+  return {
+    timesMs: miss ? pace : [...pace, ms],
+    high,
+    missStreak,
+    normalStreak,
+    answers,
+  };
 }
