@@ -183,7 +183,7 @@ export function runParity(now = new Date("2026-11-15T19:00:00.000Z")): ParityRes
   check("due line is hidden at zero", dueForReviewToday(0) === null, "hidden");
   check("due line names the count", dueForReviewToday(2) === "Due for review today: 2", dueForReviewToday(2) ?? "");
   check("session report sentence", reviewedToday(4, 3) === "Reviewed today: 4. Remembered: 3.", reviewedToday(4, 3));
-  check("agreed tag", AGREED_VERSION === "v0.2.2", AGREED_VERSION);
+  check("agreed tag", AGREED_VERSION === "v0.2.3", AGREED_VERSION);
 
   return results;
 }
