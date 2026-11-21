@@ -1,15 +1,16 @@
 /**
  * Spoken sight words, compared by pronunciation.
  * The dictionary is bundled. Nothing is sent out, and no audio is stored.
- * A short vowel before n or m may stand in for another short vowel (pin and pen).
- * An unstressed opening "a", as in "again", is one of those short vowels.
- * The heard form counts only when the closest word on the child's current list
- * is the target, and no other word on that list is closer.
+ * A short vowel before n or m may stand in for another: only IH, EH, and AE (pin and pen).
+ * AH, AA, AO, UH, and OW do not join that set. An unstressed vowel (stress 0) is close to AH0,
+ * which is how the opening "a" of "again" is treated.
+ * The heard form counts when it is an exact pronunciation of the target, or when the closest
+ * word on the child's current list is the target and no other word on that list is as close.
  */
 import { VEKOLE_SETTINGS } from "./settings.ts";
 import { CMUDICT_TEXT } from "./cmudict-data.ts";
 
-const SHORT_VOWELS = new Set(["AE", "EH", "IH", "AH"]);
+const NASAL_VOWELS = new Set(["IH", "EH", "AE"]);
 const NASALS = new Set(["N", "M"]);
 
 const DIGRAPHS: Record<string, readonly string[]> = {
@@ -122,16 +123,16 @@ export function phoneticFallback(word: string): string[] {
         index + 2 < spelling.length &&
         "aeiouy".includes(spelling[index + 2] ?? "");
       if (openingA) {
-        phones.push("AH");
+        phones.push("AH0");
         index += 1;
         continue;
       }
       if (letter === "y" && index === spelling.length - 1) {
-        phones.push("IY");
+        phones.push("IY0");
         index += 1;
         continue;
       }
-      phones.push(VOWEL[letter] ?? "AH");
+      phones.push(`${VOWEL[letter] ?? "AH"}1`);
       index += 1;
       continue;
     }
@@ -142,9 +143,29 @@ export function phoneticFallback(word: string): string[] {
   return phones;
 }
 
+function basePhone(phone: string): string {
+  return phone.replace(/[012]$/, "");
+}
+
+function stressMark(phone: string): string {
+  return /([012])$/.exec(phone)?.[1] ?? "";
+}
+
 function phoneCost(left: string, leftNext: string, right: string, rightNext: string): number {
-  if (left === right) return 0;
-  if (SHORT_VOWELS.has(left) && SHORT_VOWELS.has(right) && NASALS.has(leftNext) && NASALS.has(rightNext)) {
+  const leftBase = basePhone(left);
+  const rightBase = basePhone(right);
+  if (leftBase !== "" && leftBase === rightBase) return 0;
+  const leftNasal = NASALS.has(basePhone(leftNext));
+  const rightNasal = NASALS.has(basePhone(rightNext));
+  if (leftNasal && rightNasal && NASAL_VOWELS.has(leftBase) && NASAL_VOWELS.has(rightBase)) {
+    return VEKOLE_SETTINGS.sightNasalVowelCost;
+  }
+  const leftUnstressed = stressMark(left) === "0";
+  const rightUnstressed = stressMark(right) === "0";
+  if (
+    (leftUnstressed && rightBase === "AH" && stressMark(right) === "0") ||
+    (rightUnstressed && leftBase === "AH" && stressMark(left) === "0")
+  ) {
     return VEKOLE_SETTINGS.sightNasalVowelCost;
   }
   return VEKOLE_SETTINGS.sightPhoneEditCost;
@@ -255,11 +276,10 @@ function heardPronunciations(word: string, listPhones: readonly (readonly (reado
   return combined;
 }
 
-function closestWords(heard: string, listWords: readonly string[]): { distance: number; words: string[] } | null {
+function wordDistances(heard: string, listWords: readonly string[]): { word: string; distance: number }[] | null {
   const listPhones = listWords.map((word) => listedPronunciations(word));
   const heardPhones = heardPronunciations(heard, listPhones);
   if (heardPhones.length === 0 || listWords.length === 0) return null;
-  let best = Number.POSITIVE_INFINITY;
   const scores: { word: string; distance: number }[] = [];
   for (let index = 0; index < listWords.length; index += 1) {
     const options = listPhones[index] ?? [];
@@ -270,10 +290,9 @@ function closestWords(heard: string, listWords: readonly string[]): { distance: 
         if (next < distance) distance = next;
       }
     }
-    if (distance < best) best = distance;
     scores.push({ word: listWords[index] ?? "", distance });
   }
-  return { distance: best, words: scores.filter((score) => score.distance === best).map((score) => score.word) };
+  return scores;
 }
 
 function soundMatches(target: string, heard: string, currentList: readonly string[]): boolean {
@@ -283,18 +302,20 @@ function soundMatches(target: string, heard: string, currentList: readonly strin
   for (const token of speechTokens(heard)) {
     const key = letters(token);
     if (!key) continue;
-    const closest = closestWords(key, list);
-    if (!closest) continue;
-    if (closest.words.length === 1 && closest.words[0] === want && closest.distance <= VEKOLE_SETTINGS.sightSoundTolerance) {
-      return true;
-    }
+    const scores = wordDistances(key, list);
+    if (!scores) continue;
+    const targetDistance = scores.find((score) => score.word === want)?.distance;
+    if (targetDistance === 0) return true;
+    const best = Math.min(...scores.map((score) => score.distance));
+    const winners = scores.filter((score) => score.distance === best).map((score) => score.word);
+    if (winners.length === 1 && winners[0] === want && best <= VEKOLE_SETTINGS.sightSoundTolerance) return true;
   }
   return false;
 }
 
 /**
- * True when the child said the word, or a pronunciation whose closest word
- * on this list is that word and no other list word is as close.
+ * True when the child said the word, when the hearing is the same pronunciation
+ * as the word, or when that word is the closest one on this list.
  */
 export function sightHearingMatches(
   target: string,

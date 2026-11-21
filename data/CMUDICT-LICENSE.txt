@@ -32,6 +32,5 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-The compact word list in src/cmudict-data.ts is that dictionary with
-stress digits removed and comment lines dropped. VEKOLE does not call
+The compact word list in src/cmudict-data.ts is that dictionary with comment lines dropped. Stress marks are kept. VEKOLE does not call
 out for pronunciations. The file is part of the package.

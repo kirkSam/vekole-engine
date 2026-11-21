@@ -5,6 +5,7 @@ import {
   anySightAlternativeMatches,
   exactSightMatch,
   phoneticFallback,
+  pronunciationDistance,
   sightHearingMatches,
 } from "./sound.ts";
 
@@ -55,6 +56,50 @@ const FIRST_GRADE = [
 
 const WITH_NEIGHBORS = [...FIRST_GRADE, "in", "and", "on", "a", "one"];
 
+/** Dolch pre-primer. "to" and "two" are both on this list. */
+const PRE_PRIMER = [
+  "a",
+  "and",
+  "away",
+  "big",
+  "blue",
+  "can",
+  "come",
+  "down",
+  "find",
+  "for",
+  "funny",
+  "go",
+  "help",
+  "here",
+  "I",
+  "in",
+  "is",
+  "it",
+  "jump",
+  "little",
+  "look",
+  "make",
+  "me",
+  "my",
+  "not",
+  "one",
+  "play",
+  "red",
+  "run",
+  "said",
+  "see",
+  "the",
+  "three",
+  "to",
+  "two",
+  "up",
+  "we",
+  "where",
+  "yellow",
+  "you",
+];
+
 describe("sight-word sound", () => {
   it("keeps the tolerance and the five alternatives in the one settings list", () => {
     assert.equal(VEKOLE_SETTINGS.recognitionAlternatives, 5);
@@ -70,8 +115,18 @@ describe("sight-word sound", () => {
     assert.equal(sightHearingMatches("again", "agin", WITH_NEIGHBORS), true);
     assert.equal(sightHearingMatches("any", "inny", WITH_NEIGHBORS), true);
     assert.equal(sightHearingMatches("an", "un", WITH_NEIGHBORS), true);
-    assert.deepEqual(phoneticFallback("agin"), ["AH", "G", "IH", "N"]);
-    assert.deepEqual(phoneticFallback("inny"), ["IH", "N", "IY"]);
+    assert.deepEqual(phoneticFallback("agin"), ["AH0", "G", "IH1", "N"]);
+    assert.deepEqual(phoneticFallback("inny"), ["IH1", "N", "IY0"]);
+  });
+
+  it("does not treat AH as a pin-pen vowel, and does treat an unstressed vowel as close to AH0", () => {
+    assert.equal(sightHearingMatches("run", "ran", PRE_PRIMER), false);
+    assert.equal(sightHearingMatches("run", "ran", ["run", "ran"]), false);
+    assert.equal(pronunciationDistance(["R", "AE1", "N"], ["R", "AH1", "N"]), VEKOLE_SETTINGS.sightPhoneEditCost);
+    assert.equal(pronunciationDistance(["P", "IH1", "N"], ["P", "EH1", "N"]), VEKOLE_SETTINGS.sightNasalVowelCost);
+    assert.equal(pronunciationDistance(["AH0"], ["IH0"]), VEKOLE_SETTINGS.sightNasalVowelCost);
+    assert.equal(pronunciationDistance(["AH1"], ["IH1"]), VEKOLE_SETTINGS.sightPhoneEditCost);
+    assert.equal(pronunciationDistance(["AA1", "N"], ["AH1", "N"]), VEKOLE_SETTINGS.sightPhoneEditCost);
   });
 
   it("does not accept in for an when in is on the current list", () => {
@@ -106,7 +161,10 @@ describe("sight-word sound", () => {
     assert.equal(sightHearingMatches("an", "an", FIRST_GRADE), true);
     assert.equal(sightHearingMatches("any", "any", FIRST_GRADE), true);
     assert.equal(sightHearingMatches("again", "again", FIRST_GRADE), true);
-    assert.equal(sightHearingMatches("to", "too", ["to", "too"]), false);
+    assert.equal(sightHearingMatches("to", "too", ["to", "too"]), true);
+    assert.equal(sightHearingMatches("to", "two", PRE_PRIMER), true);
+    assert.equal(sightHearingMatches("two", "too", PRE_PRIMER), true);
+    assert.equal(sightHearingMatches("to", "go", PRE_PRIMER), false);
     assert.equal(sightHearingMatches("to", "too", ["to"], ["too"]), true);
     for (const word of FIRST_GRADE) {
       assert.equal(sightHearingMatches(word, word, FIRST_GRADE), true, word);

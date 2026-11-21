@@ -1,12 +1,5 @@
 export { AGREED_VERSION } from "./agreed-version.ts";
 export { VEKOLE_SETTINGS, type VekoleSettings } from "./settings.ts";
-export {
-  anySightAlternativeMatches,
-  exactSightMatch,
-  phoneticFallback,
-  pronunciationDistance,
-  sightHearingMatches,
-} from "./sound.ts";
 export { runParity, type ParityResult } from "./parity.ts";
 export { dueForReviewToday, reviewedToday } from "./sentences.ts";
 export {
