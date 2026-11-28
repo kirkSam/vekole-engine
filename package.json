@@ -1,6 +1,6 @@
 {
   "name": "@kirkpatrick/vekole-engine",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "type": "module",
   "description": "VEKOLE rules for memory, fatigue, and grading. No network. No student records.",
@@ -9,6 +9,6 @@
     "./server": "./src/server.ts"
   },
   "scripts": {
-    "test": "node --experimental-strip-types --test src/engine.test.ts src/sound.test.ts src/client-bundle.test.ts test/parity.test.ts"
+    "test": "node --experimental-strip-types --test src/engine.test.ts src/phoneme.test.ts src/sound.test.ts src/client-bundle.test.ts test/parity.test.ts"
   }
 }

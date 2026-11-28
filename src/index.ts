@@ -1,4 +1,5 @@
 export { AGREED_VERSION } from "./agreed-version.ts";
+export { phonemeQuietMs, planPhonemeHearing, type PhonemeHearing, type PhonemePlan } from "./phoneme.ts";
 export { VEKOLE_SETTINGS, type VekoleSettings } from "./settings.ts";
 export { runParity, type ParityResult } from "./parity.ts";
 export { dueForReviewToday, reviewedToday } from "./sentences.ts";
